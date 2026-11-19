@@ -1,0 +1,41 @@
+name: Build and integration tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo_local_only
+          POSTGRES_DB: reliable_jobs_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U demo -d reliable_jobs_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_POSTGRES: Host=localhost;Port=5432;Database=reliable_jobs_test;Username=demo;Password=demo_local_only
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore ReliableJobProcessor.slnx
+      - name: Build
+        run: dotnet build ReliableJobProcessor.slnx -c Release --no-restore
+      - name: Unit and PostgreSQL integration checks
+        run: dotnet run --project tests/ReliableJobs.Tests -c Release --no-build

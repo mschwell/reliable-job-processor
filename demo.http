@@ -1,0 +1,62 @@
+@baseUrl = http://localhost:5081
+
+### Health
+GET {{baseUrl}}/health
+
+### Enqueue a deterministic sum. Repeating the same key & body reuses the job.
+POST {{baseUrl}}/jobs
+Content-Type: application/json
+
+{
+  "kind": "sum",
+  "payload": {"numbers": [10, 20, 35.5]},
+  "idempotencyKey": "demo-order-1001",
+  "maxAttempts": 3
+}
+
+### Deliberately fail twice, succeed on third try (after ~2 + 4 seconds).
+POST {{baseUrl}}/jobs
+Content-Type: application/json
+
+{
+  "kind": "flaky",
+  "payload": {"failUntilAttempt": 2},
+  "idempotencyKey": "demo-flaky-1002",
+  "maxAttempts": 3
+}
+
+### A permanently failing job reaches the dead-letter status after 2 tries.
+POST {{baseUrl}}/jobs
+Content-Type: application/json
+
+{
+  "kind": "flaky",
+  "payload": {"failUntilAttempt": 9},
+  "idempotencyKey": "demo-dead-1003",
+  "maxAttempts": 2
+}
+
+### Short bounded work
+POST {{baseUrl}}/jobs
+Content-Type: application/json
+
+{
+  "kind": "delay",
+  "payload": {"milliseconds": 1000},
+  "maxAttempts": 3
+}
+
+### List most recently queued jobs
+GET {{baseUrl}}/jobs?limit=20
+
+### List jobs that exhausted their automatic retry budget
+GET {{baseUrl}}/jobs?status=dead
+
+### Replace this id with one returned by POST /jobs
+GET {{baseUrl}}/jobs/00000000-0000-0000-0000-000000000000
+
+### Attempt history; replace the id
+GET {{baseUrl}}/jobs/00000000-0000-0000-0000-000000000000/attempts
+
+### Retry dead job with 3 additional attempts; replace the id
+POST {{baseUrl}}/jobs/00000000-0000-0000-0000-000000000000/retry

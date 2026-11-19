@@ -1,0 +1,10 @@
+.git
+**/bin
+**/obj
+.vs
+.vscode
+*.zip
+.env
+.env.*
+tests
+.github
